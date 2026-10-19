@@ -19,3 +19,21 @@ function initApp() {
   bindEvents();
   render();
 }
+function saveState() {
+  localStorage.setItem('taskmaster_tasks', JSON.stringify(state.tasks));
+  localStorage.setItem('taskmaster_filter', state.filter);
+  localStorage.setItem('taskmaster_dark', JSON.stringify(state.darkMode));
+}
+
+// Applies or removes dark mode CSS class from root element
+function applyTheme() {
+  const html = document.documentElement;
+  const icon = document.getElementById('theme-icon');
+  if (state.darkMode) {
+    html.classList.add('dark');
+    icon.textContent = '☀️';
+  } else {
+    html.classList.remove('dark');
+    icon.textContent = '🌙';
+  }
+}
