@@ -37,3 +37,11 @@ function applyTheme() {
     icon.textContent = '🌙';
   }
 }
+// Formats timestamp into readable time and date string
+function formatTime(timestamp) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return `${timeStr}, ${dateStr}`;
+}
