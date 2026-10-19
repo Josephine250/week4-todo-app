@@ -45,3 +45,17 @@ function formatTime(timestamp) {
   const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   return `${timeStr}, ${dateStr}`;
 }
+function bindEvents() {
+  document.getElementById('task-form').addEventListener('submit', handleAddTask);
+  document.getElementById('task-input').addEventListener('input', clearError);
+  document.getElementById('theme-toggle').addEventListener('click', handleToggleTheme);
+  document.getElementById('clear-completed').addEventListener('click', handleClearCompleted);
+  document.getElementById('task-list').addEventListener('click', handleTaskListClick);
+  document.getElementById('task-list').addEventListener('dblclick', handleTaskListDblClick);
+  document.getElementById('cancel-delete').addEventListener('click', closeDeleteDialog);
+  document.getElementById('confirm-delete').addEventListener('click', handleConfirmDelete);
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', handleFilterChange);
+  });
+}
