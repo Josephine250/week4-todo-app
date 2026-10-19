@@ -229,3 +229,143 @@ function createBigCardElement(task) {
     li.appendChild(createEditingInput(task));
     return li;
   }
+  const cardHeader = document.createElement('div');
+  cardHeader.className = 'flex items-center justify-between gap-2 mb-4';
+
+  const badgeSpan = createPriorityBadge(task.priority);
+
+  const timeSpan = document.createElement('span');
+  timeSpan.className = 'text-xs font-semibold text-slate-400 dark:text-slate-500 flex items-center gap-1 bg-slate-100 dark:bg-slate-900/60 px-2.5 py-1 rounded-md';
+  timeSpan.textContent = `🕒 Added: ${formatTime(task.createdAt)}`;
+
+  cardHeader.appendChild(badgeSpan);
+  cardHeader.appendChild(timeSpan);
+
+  // Card Body: Large Checkbox + Task Text
+  const cardBody = document.createElement('div');
+  cardBody.className = 'mb-6 flex items-start gap-4 min-w-0';
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = task.completed;
+  checkbox.className = 'task-checkbox mt-1 h-5 w-5 rounded-md border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0';
+  checkbox.setAttribute('aria-label', `Mark "${task.text}" as ${task.completed ? 'active' : 'completed'}`);
+
+  const textSpan = document.createElement('p');
+  textSpan.textContent = task.text;
+  textSpan.className = `text-base font-bold leading-relaxed break-words cursor-pointer ${
+    task.completed
+      ? 'line-through text-slate-400 dark:text-slate-500'
+      : 'text-slate-800 dark:text-slate-100'
+  }`;
+
+  cardBody.appendChild(checkbox);
+  cardBody.appendChild(textSpan);
+
+  // Card Footer: Action Buttons (Edit & Delete)
+  const cardFooter = document.createElement('div');
+  cardFooter.className = 'flex items-center justify-end gap-3 pt-3 border-t border-slate-200/80 dark:border-slate-700/80';
+
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.className = 'edit-btn px-3 py-1.5 text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-1.5 transition-colors';
+  editBtn.setAttribute('aria-label', `Edit task "${task.text}"`);
+  editBtn.innerHTML = '✏️ <span>Edit</span>';
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.type = 'button';
+  deleteBtn.className = 'delete-btn px-3 py-1.5 text-xs font-bold bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-1.5 transition-colors';
+  deleteBtn.setAttribute('aria-label', `Delete task "${task.text}"`);
+  deleteBtn.innerHTML = '🗑️ <span>Delete</span>';
+
+  cardFooter.appendChild(editBtn);
+  cardFooter.appendChild(deleteBtn);
+
+  li.appendChild(cardHeader);
+  li.appendChild(cardBody);
+  li.appendChild(cardFooter);
+
+  return li;
+}
+
+// Creates priority badge DOM element with colors
+function createPriorityBadge(priority) {
+  const badge = document.createElement('span');
+  let colors = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700';
+  if (priority === 'high') {
+    colors = 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300 border border-red-300 dark:border-red-700';
+  } else if (priority === 'medium') {
+    colors = 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700';
+  }
+
+  badge.className = `px-3 py-1 text-xs font-extrabold uppercase rounded-full tracking-wider shadow-xs ${colors}`;
+  badge.textContent = `${priority} Priority`;
+  return badge;
+}
+
+// Constructs inline editing input field inside task card
+function createEditingInput(task) {
+  const container = document.createElement('div');
+  container.className = 'w-full py-4';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = task.text;
+  input.className = 'w-full px-4 py-3 text-base font-semibold rounded-xl border-2 border-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none shadow-inner';
+
+  let isCommitted = false;
+
+  const commitEdit = () => {
+    if (isCommitted) return;
+    isCommitted = true;
+    saveTaskEditing(task.id, input.value);
+  };
+
+  const cancelEdit = () => {
+    if (isCommitted) return;
+    isCommitted = true;
+    cancelTaskEditing();
+  };
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    commitEdit();
+  });
+
+  setTimeout(() => {
+    input.focus();
+    input.select();
+  }, 0);
+
+  container.appendChild(input);
+  return container;
+}
+
+// Renders remaining active task count with pluralization
+function renderCounters() {
+  const activeCount = state.tasks.filter(t => !t.completed).length;
+  const counterEl = document.getElementById('task-counter');
+  counterEl.textContent = `${activeCount} ${activeCount === 1 ? 'task' : 'tasks'} left`;
+}
+
+// Calculates and updates percentage completion progress bar
+function renderProgressBar() {
+  const total = state.tasks.length;
+  const completed = state.tasks.filter(t => t.completed).length;
+  const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+  document.getElementById('progress-percent').textContent = `${percentage}%`;
+  document.getElementById('progress-bar-fill').style.width = `${percentage}%`;
+}
+
+// Initializes application when DOM content is fully loaded
+document.addEventListener('DOMContentLoaded', initApp);
