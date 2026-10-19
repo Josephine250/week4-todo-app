@@ -162,3 +162,70 @@ function getVisibleTasks() {
   if (state.filter === 'completed') return state.tasks.filter(t => t.completed);
   return state.tasks;
 }
+function render() {
+  renderFilters();
+  renderList();
+  renderCounters();
+  renderProgressBar();
+}
+
+// Updates visual state of active filter buttons
+function renderFilters() {
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    const isSelected = btn.dataset.filter === state.filter;
+    btn.className = `filter-btn px-4 py-2 text-sm font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+      isSelected
+        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-md'
+        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+    }`;
+  });
+}
+
+// Renders task list elements as big cards or shows empty state
+function renderList() {
+  const listEl = document.getElementById('task-list');
+  const emptyEl = document.getElementById('empty-state');
+  const visibleTasks = getVisibleTasks();
+
+  listEl.innerHTML = '';
+
+  if (visibleTasks.length === 0) {
+    emptyEl.classList.remove('hidden');
+    updateEmptyStateMessage();
+    return;
+  }
+
+  emptyEl.classList.add('hidden');
+  visibleTasks.forEach(task => {
+    const li = createBigCardElement(task);
+    listEl.appendChild(li);
+  });
+}
+
+// Updates empty state message according to current filter
+function updateEmptyStateMessage() {
+  const textEl = document.getElementById('empty-state-text');
+  if (state.filter === 'active') textEl.textContent = 'No active tasks right now!';
+  else if (state.filter === 'completed') textEl.textContent = 'No completed tasks yet.';
+  else textEl.textContent = 'Your task list is empty. Add a task above!';
+}
+
+// Safely constructs DOM element for big task card with priority border and timestamp
+function createBigCardElement(task) {
+  const li = document.createElement('li');
+  li.dataset.id = task.id;
+  let priorityCardStyles = 'border-l-8 border-l-emerald-500 border-slate-200 dark:border-slate-700 bg-emerald-50/20 dark:bg-emerald-950/10';
+  if (task.priority === 'high') {
+    priorityCardStyles = 'border-l-8 border-l-red-500 border-slate-200 dark:border-slate-700 bg-red-50/20 dark:bg-red-950/10';
+  } else if (task.priority === 'medium') {
+    priorityCardStyles = 'border-l-8 border-l-amber-500 border-slate-200 dark:border-slate-700 bg-amber-50/20 dark:bg-amber-950/10';
+  }
+
+  li.className = `p-6 rounded-2xl border-2 shadow-md flex flex-col justify-between transition-all hover:shadow-xl ${priorityCardStyles} ${
+    task.completed ? 'opacity-70 bg-slate-100/50 dark:bg-slate-800/40' : 'bg-white dark:bg-slate-800'
+  }`;
+
+  if (state.editingTaskId === task.id) {
+    li.appendChild(createEditingInput(task));
+    return li;
+  }
