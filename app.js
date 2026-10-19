@@ -59,3 +59,106 @@ function bindEvents() {
     btn.addEventListener('click', handleFilterChange);
   });
 }
+function handleFilterChange(e) {
+  state.filter = e.target.dataset.filter;
+  saveState();
+  render();
+}
+
+// Delegated click handler for big task cards using closest selector
+function handleTaskListClick(e) {
+  const itemEl = e.target.closest('[data-id]');
+  if (!itemEl) return;
+  const taskId = itemEl.dataset.id;
+
+  if (e.target.closest('.task-checkbox')) {
+    toggleTaskCompletion(taskId);
+  } else if (e.target.closest('.delete-btn')) {
+    openDeleteDialog(taskId);
+  } else if (e.target.closest('.edit-btn')) {
+    enableTaskEditing(taskId);
+  }
+}
+
+// Handles double click event on task cards to initiate inline editing
+function handleTaskListDblClick(e) {
+  const itemEl = e.target.closest('[data-id]');
+  if (!itemEl) return;
+  enableTaskEditing(itemEl.dataset.id);
+}
+
+// Toggles task completion boolean flag by ID
+function toggleTaskCompletion(id) {
+  const task = state.tasks.find(t => t.id === id);
+  if (task) {
+    task.completed = !task.completed;
+    saveState();
+    render();
+  }
+}
+
+// Enables inline editing mode for specified task ID
+function enableTaskEditing(id) {
+  state.editingTaskId = id;
+  render();
+}
+
+// Cancels inline task editing mode without saving
+function cancelTaskEditing() {
+  state.editingTaskId = null;
+  render();
+}
+
+// Saves edited task text with validation constraints
+function saveTaskEditing(id, newText) {
+  const trimmed = newText.trim();
+  if (trimmed.length === 0 || trimmed.length > 100) {
+    cancelTaskEditing();
+    return;
+  }
+  const task = state.tasks.find(t => t.id === id);
+  if (task) {
+    task.text = trimmed;
+    saveState();
+  }
+  state.editingTaskId = null;
+  render();
+}
+
+// Opens modal confirmation dialog for task deletion
+function openDeleteDialog(id) {
+  state.pendingDeleteId = id;
+  const dialog = document.getElementById('delete-dialog');
+  dialog.showModal();
+}
+
+// Closes task deletion confirmation modal dialog
+function closeDeleteDialog() {
+  state.pendingDeleteId = null;
+  const dialog = document.getElementById('delete-dialog');
+  dialog.close();
+}
+
+// Confirms and executes deletion of pending task item
+function handleConfirmDelete() {
+  if (state.pendingDeleteId) {
+    state.tasks = state.tasks.filter(t => t.id !== state.pendingDeleteId);
+    saveState();
+    closeDeleteDialog();
+    render();
+  }
+}
+
+// Clears all completed tasks from application state
+function handleClearCompleted() {
+  state.tasks = state.tasks.filter(t => !t.completed);
+  saveState();
+  render();
+}
+
+// Returns filtered tasks array based on active filter setting
+function getVisibleTasks() {
+  if (state.filter === 'active') return state.tasks.filter(t => !t.completed);
+  if (state.filter === 'completed') return state.tasks.filter(t => t.completed);
+  return state.tasks;
+}
