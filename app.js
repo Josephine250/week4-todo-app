@@ -1,71 +1,89 @@
+// Global Application State Object
 const state = {
   tasks: [],
-  filter: 'all',
-  darkMode: false,
   editingTaskId: null,
   pendingDeleteId: null
 };
-// localStorage on load
+
 function initApp() {
   const savedTasks = localStorage.getItem('taskmaster_tasks');
-  const savedFilter = localStorage.getItem('taskmaster_filter');
-  const savedDark = localStorage.getItem('taskmaster_dark');
+  if (savedTasks) {
+    state.tasks = JSON.parse(savedTasks);
+  } else {
+    state.tasks = [
+      { id: '1', text: 'Go to the gym', completed: true, createdAt: Date.now() - 1200000 },
+      { id: '2', text: 'Post 2 videos', completed: false, createdAt: Date.now() - 600000 },
+      { id: '3', text: 'Call Mom', completed: false, createdAt: Date.now() }
+    ];
+    saveState();
+  }
 
-  if (savedTasks) state.tasks = JSON.parse(savedTasks);
-  if (savedFilter) state.filter = savedFilter;
-  if (savedDark !== null) state.darkMode = JSON.parse(savedDark);
-
-  applyTheme();
   bindEvents();
   render();
 }
+
 function saveState() {
   localStorage.setItem('taskmaster_tasks', JSON.stringify(state.tasks));
-  localStorage.setItem('taskmaster_filter', state.filter);
-  localStorage.setItem('taskmaster_dark', JSON.stringify(state.darkMode));
 }
 
-// Applies or removes dark mode CSS class from root element
-function applyTheme() {
-  const html = document.documentElement;
-  const icon = document.getElementById('theme-icon');
-  if (state.darkMode) {
-    html.classList.add('dark');
-    icon.textContent = '☀️';
-  } else {
-    html.classList.remove('dark');
-    icon.textContent = '🌙';
-  }
-}
-// Formats timestamp into readable time and date string
-function formatTime(timestamp) {
-  if (!timestamp) return '';
-  const date = new Date(timestamp);
-  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  return `${timeStr}, ${dateStr}`;
-}
 function bindEvents() {
-  document.getElementById('task-form').addEventListener('submit', handleAddTask);
-  document.getElementById('task-input').addEventListener('input', clearError);
-  document.getElementById('theme-toggle').addEventListener('click', handleToggleTheme);
-  document.getElementById('clear-completed').addEventListener('click', handleClearCompleted);
+  // Page Navigation Events
+  document.getElementById('btn-show-add-group').addEventListener('click', showAddGroupView);
+  document.getElementById('btn-submit-add-group').addEventListener('click', showTodayView);
+  
+  // Right Screen Inline Adding Events
+  document.getElementById('btn-show-add-task').addEventListener('click', showInlineAddTaskRow);
+  document.getElementById('inline-add-task-form').addEventListener('submit', handleInlineAddTask);
+  
+  // Task Interactions
   document.getElementById('task-list').addEventListener('click', handleTaskListClick);
   document.getElementById('task-list').addEventListener('dblclick', handleTaskListDblClick);
   document.getElementById('cancel-delete').addEventListener('click', closeDeleteDialog);
   document.getElementById('confirm-delete').addEventListener('click', handleConfirmDelete);
-
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', handleFilterChange);
-  });
 }
-function handleFilterChange(e) {
-  state.filter = e.target.dataset.filter;
+
+// Switches view focus
+function showAddGroupView() {
+  document.getElementById('view-add-group').scrollIntoView({ behavior: 'smooth' });
+}
+
+function showTodayView() {
+  document.getElementById('view-today').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Activates Inline Task Form on Screen 1
+function showInlineAddTaskRow() {
+  const formRow = document.getElementById('inline-add-task-form');
+  const inputEl = document.getElementById('inline-task-input');
+  
+  formRow.classList.remove('hidden');
+  inputEl.focus();
+}
+
+// Handles submitting inline task form
+function handleInlineAddTask(e) {
+  e.preventDefault();
+  const input = document.getElementById('inline-task-input');
+  const text = input.value.trim();
+
+  if (text.length === 0 || text.length > 100) return;
+
+  const newTask = {
+    id: Date.now().toString(),
+    text: text,
+    completed: false,
+    createdAt: Date.now()
+  };
+
+  state.tasks.push(newTask);
+  input.value = '';
+  document.getElementById('inline-add-task-form').classList.add('hidden');
+  
   saveState();
   render();
 }
 
-// Delegated click handler for big task cards using closest selector
+// Handles Checkboxes, Edit, and Delete clicks
 function handleTaskListClick(e) {
   const itemEl = e.target.closest('[data-id]');
   if (!itemEl) return;
@@ -80,14 +98,12 @@ function handleTaskListClick(e) {
   }
 }
 
-// Handles double click event on task cards to initiate inline editing
 function handleTaskListDblClick(e) {
   const itemEl = e.target.closest('[data-id]');
   if (!itemEl) return;
   enableTaskEditing(itemEl.dataset.id);
 }
 
-// Toggles task completion boolean flag by ID
 function toggleTaskCompletion(id) {
   const task = state.tasks.find(t => t.id === id);
   if (task) {
@@ -97,19 +113,16 @@ function toggleTaskCompletion(id) {
   }
 }
 
-// Enables inline editing mode for specified task ID
 function enableTaskEditing(id) {
   state.editingTaskId = id;
   render();
 }
 
-// Cancels inline task editing mode without saving
 function cancelTaskEditing() {
   state.editingTaskId = null;
   render();
 }
 
-// Saves edited task text with validation constraints
 function saveTaskEditing(id, newText) {
   const trimmed = newText.trim();
   if (trimmed.length === 0 || trimmed.length > 100) {
@@ -125,21 +138,17 @@ function saveTaskEditing(id, newText) {
   render();
 }
 
-// Opens modal confirmation dialog for task deletion
+// Modal handling
 function openDeleteDialog(id) {
   state.pendingDeleteId = id;
-  const dialog = document.getElementById('delete-dialog');
-  dialog.showModal();
+  document.getElementById('delete-dialog').showModal();
 }
 
-// Closes task deletion confirmation modal dialog
 function closeDeleteDialog() {
   state.pendingDeleteId = null;
-  const dialog = document.getElementById('delete-dialog');
-  dialog.close();
+  document.getElementById('delete-dialog').close();
 }
 
-// Confirms and executes deletion of pending task item
 function handleConfirmDelete() {
   if (state.pendingDeleteId) {
     state.tasks = state.tasks.filter(t => t.id !== state.pendingDeleteId);
@@ -149,178 +158,91 @@ function handleConfirmDelete() {
   }
 }
 
-// Clears all completed tasks from application state
-function handleClearCompleted() {
-  state.tasks = state.tasks.filter(t => !t.completed);
-  saveState();
-  render();
-}
-
-// Returns filtered tasks array based on active filter setting
-function getVisibleTasks() {
-  if (state.filter === 'active') return state.tasks.filter(t => !t.completed);
-  if (state.filter === 'completed') return state.tasks.filter(t => t.completed);
-  return state.tasks;
-}
+// Main Render Logic
 function render() {
-  renderFilters();
-  renderList();
-  renderCounters();
-  renderProgressBar();
-}
-
-// Updates visual state of active filter buttons
-function renderFilters() {
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    const isSelected = btn.dataset.filter === state.filter;
-    btn.className = `filter-btn px-4 py-2 text-sm font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-      isSelected
-        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-md'
-        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-    }`;
-  });
-}
-
-// Renders task list elements as big cards or shows empty state
-function renderList() {
   const listEl = document.getElementById('task-list');
   const emptyEl = document.getElementById('empty-state');
-  const visibleTasks = getVisibleTasks();
 
   listEl.innerHTML = '';
 
-  if (visibleTasks.length === 0) {
+  if (state.tasks.length === 0) {
     emptyEl.classList.remove('hidden');
-    updateEmptyStateMessage();
     return;
   }
 
   emptyEl.classList.add('hidden');
-  visibleTasks.forEach(task => {
-    const li = createBigCardElement(task);
-    listEl.appendChild(li);
+  state.tasks.forEach(task => {
+    listEl.appendChild(createTaskElement(task));
   });
 }
 
-// Updates empty state message according to current filter
-function updateEmptyStateMessage() {
-  const textEl = document.getElementById('empty-state-text');
-  if (state.filter === 'active') textEl.textContent = 'No active tasks right now!';
-  else if (state.filter === 'completed') textEl.textContent = 'No completed tasks yet.';
-  else textEl.textContent = 'Your task list is empty. Add a task above!';
-}
-
-// Safely constructs DOM element for big task card with priority border and timestamp
-function createBigCardElement(task) {
+// Generates DOM Element for task items
+function createTaskElement(task) {
   const li = document.createElement('li');
   li.dataset.id = task.id;
-  let priorityCardStyles = 'border-l-8 border-l-emerald-500 border-slate-200 dark:border-slate-700 bg-emerald-50/20 dark:bg-emerald-950/10';
-  if (task.priority === 'high') {
-    priorityCardStyles = 'border-l-8 border-l-red-500 border-slate-200 dark:border-slate-700 bg-red-50/20 dark:bg-red-950/10';
-  } else if (task.priority === 'medium') {
-    priorityCardStyles = 'border-l-8 border-l-amber-500 border-slate-200 dark:border-slate-700 bg-amber-50/20 dark:bg-amber-950/10';
-  }
-
-  li.className = `p-6 rounded-2xl border-2 shadow-md flex flex-col justify-between transition-all hover:shadow-xl ${priorityCardStyles} ${
-    task.completed ? 'opacity-70 bg-slate-100/50 dark:bg-slate-800/40' : 'bg-white dark:bg-slate-800'
-  }`;
+  li.className = 'flex items-center gap-3 w-full group py-0.5';
 
   if (state.editingTaskId === task.id) {
     li.appendChild(createEditingInput(task));
     return li;
   }
-  const cardHeader = document.createElement('div');
-  cardHeader.className = 'flex items-center justify-between gap-2 mb-4';
 
-  const badgeSpan = createPriorityBadge(task.priority);
+  const dateObj = new Date(task.createdAt);
+  const timeString = dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(':00', '');
 
   const timeSpan = document.createElement('span');
-  timeSpan.className = 'text-xs font-semibold text-slate-400 dark:text-slate-500 flex items-center gap-1 bg-slate-100 dark:bg-slate-900/60 px-2.5 py-1 rounded-md';
-  timeSpan.textContent = `🕒 Added: ${formatTime(task.createdAt)}`;
-
-  cardHeader.appendChild(badgeSpan);
-  cardHeader.appendChild(timeSpan);
-
-  // Card Body: Large Checkbox + Task Text
-  const cardBody = document.createElement('div');
-  cardBody.className = 'mb-6 flex items-start gap-4 min-w-0';
+  timeSpan.className = 'w-16 text-xs font-bold text-gray-900 shrink-0';
+  timeSpan.textContent = timeString;
 
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.checked = task.completed;
-  checkbox.className = 'task-checkbox mt-1 h-5 w-5 rounded-md border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0';
-  checkbox.setAttribute('aria-label', `Mark "${task.text}" as ${task.completed ? 'active' : 'completed'}`);
+  checkbox.className = 'task-checkbox peer appearance-none w-[20px] h-[20px] border-[2px] border-[#8B5CF6] rounded-full checked:bg-[#8B5CF6] cursor-pointer shrink-0 transition-colors focus:outline-none focus:ring-0';
 
-  const textSpan = document.createElement('p');
+  const textSpan = document.createElement('span');
   textSpan.textContent = task.text;
-  textSpan.className = `text-base font-bold leading-relaxed break-words cursor-pointer ${
-    task.completed
-      ? 'line-through text-slate-400 dark:text-slate-500'
-      : 'text-slate-800 dark:text-slate-100'
-  }`;
+  textSpan.className = 'text-[14px] font-bold text-gray-900 truncate flex-1 cursor-pointer transition-all peer-checked:line-through peer-checked:decoration-[#8B5CF6] peer-checked:decoration-2';
 
-  cardBody.appendChild(checkbox);
-  cardBody.appendChild(textSpan);
-
-  // Card Footer: Action Buttons (Edit & Delete)
-  const cardFooter = document.createElement('div');
-  cardFooter.className = 'flex items-center justify-end gap-3 pt-3 border-t border-slate-200/80 dark:border-slate-700/80';
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0';
 
   const editBtn = document.createElement('button');
   editBtn.type = 'button';
-  editBtn.className = 'edit-btn px-3 py-1.5 text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center gap-1.5 transition-colors';
-  editBtn.setAttribute('aria-label', `Edit task "${task.text}"`);
-  editBtn.innerHTML = '✏️ <span>Edit</span>';
+  editBtn.className = 'edit-btn p-1 text-[#8B5CF6] hover:text-[#6D28D9] focus:outline-none text-xs';
+  editBtn.innerHTML = '✏️';
 
   const deleteBtn = document.createElement('button');
   deleteBtn.type = 'button';
-  deleteBtn.className = 'delete-btn px-3 py-1.5 text-xs font-bold bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-1.5 transition-colors';
-  deleteBtn.setAttribute('aria-label', `Delete task "${task.text}"`);
-  deleteBtn.innerHTML = '🗑️ <span>Delete</span>';
+  deleteBtn.className = 'delete-btn p-1 text-[#8B5CF6] hover:text-[#6D28D9] focus:outline-none text-xs';
+  deleteBtn.innerHTML = '🗑️';
 
-  cardFooter.appendChild(editBtn);
-  cardFooter.appendChild(deleteBtn);
+  actionsDiv.appendChild(editBtn);
+  actionsDiv.appendChild(deleteBtn);
 
-  li.appendChild(cardHeader);
-  li.appendChild(cardBody);
-  li.appendChild(cardFooter);
+  li.appendChild(timeSpan);
+  li.appendChild(checkbox);
+  li.appendChild(textSpan);
+  li.appendChild(actionsDiv);
 
   return li;
 }
 
-// Creates priority badge DOM element with colors
-function createPriorityBadge(priority) {
-  const badge = document.createElement('span');
-  let colors = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700';
-  if (priority === 'high') {
-    colors = 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300 border border-red-300 dark:border-red-700';
-  } else if (priority === 'medium') {
-    colors = 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700';
-  }
-
-  badge.className = `px-3 py-1 text-xs font-extrabold uppercase rounded-full tracking-wider shadow-xs ${colors}`;
-  badge.textContent = `${priority} Priority`;
-  return badge;
-}
-
-// Constructs inline editing input field inside task card
+// Inline Editing Input Row
 function createEditingInput(task) {
   const container = document.createElement('div');
-  container.className = 'w-full py-4';
+  container.className = 'w-full py-1 flex';
 
   const input = document.createElement('input');
   input.type = 'text';
   input.value = task.text;
-  input.className = 'w-full px-4 py-3 text-base font-semibold rounded-xl border-2 border-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none shadow-inner';
+  input.className = 'w-full px-0 py-1 text-[14px] font-bold border-b-2 border-[#8B5CF6] bg-transparent text-gray-900 focus:outline-none';
 
   let isCommitted = false;
-
   const commitEdit = () => {
     if (isCommitted) return;
     isCommitted = true;
     saveTaskEditing(task.id, input.value);
   };
-
   const cancelEdit = () => {
     if (isCommitted) return;
     isCommitted = true;
@@ -328,44 +250,15 @@ function createEditingInput(task) {
   };
 
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      commitEdit();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      cancelEdit();
-    }
+    if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
   });
+  input.addEventListener('blur', commitEdit);
 
-  input.addEventListener('blur', () => {
-    commitEdit();
-  });
-
-  setTimeout(() => {
-    input.focus();
-    input.select();
-  }, 0);
-
+  setTimeout(() => { input.focus(); input.select(); }, 0);
+  
   container.appendChild(input);
   return container;
 }
 
-// Renders remaining active task count with pluralization
-function renderCounters() {
-  const activeCount = state.tasks.filter(t => !t.completed).length;
-  const counterEl = document.getElementById('task-counter');
-  counterEl.textContent = `${activeCount} ${activeCount === 1 ? 'task' : 'tasks'} left`;
-}
-
-// Calculates and updates percentage completion progress bar
-function renderProgressBar() {
-  const total = state.tasks.length;
-  const completed = state.tasks.filter(t => t.completed).length;
-  const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
-
-  document.getElementById('progress-percent').textContent = `${percentage}%`;
-  document.getElementById('progress-bar-fill').style.width = `${percentage}%`;
-}
-
-// Initializes application when DOM content is fully loaded
 document.addEventListener('DOMContentLoaded', initApp);
